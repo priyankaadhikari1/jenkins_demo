@@ -1,0 +1,40 @@
+pipeline {
+    agent any
+    options { timestamps() }
+
+    stages {
+        stage('Checkout') {
+            steps { checkout scm }
+        }
+        stage('Setup') {
+            steps {
+                sh 'python3 -m venv venv'
+                sh '. venv/bin/activate && pip install -r requirements.txt'
+            }
+        }
+        stage('Test') {
+            steps {
+                sh '. venv/bin/activate && pytest --junitxml=report.xml'
+            }
+            post {
+                always { junit 'report.xml' }
+            }
+        }
+        stage('Package') {
+            steps {
+                sh 'tar -czf app-${BUILD_NUMBER}.tgz app.py'
+                archiveArtifacts artifacts: 'app-*.tgz'
+            }
+        }
+        stage('Deploy') {
+            steps {
+                sh 'echo "Deploying build ${BUILD_NUMBER}"'
+            }
+        }
+    }
+
+    post {
+        success { echo 'Pipeline succeeded' }
+        failure { echo 'Pipeline failed' }
+    }
+}
